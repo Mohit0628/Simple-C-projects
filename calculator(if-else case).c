@@ -10,11 +10,11 @@ int main(){
     else if (c=='-'){printf("%.2f\n",a-b);}
     else if (c=='*'){printf("%.2f\n",a*b);}
     else if (c=='/'){
-        if(b!=0 && a!=0){
+        if(b!=0){
             printf("%.2f\n",a/b);
         }
         else{printf("Divison by zero error\n");}    
     }
-    else{printf("Please enetr the valid operator.");}
+    else{printf("Please enetr the valid operator.\n");}
     return 0;
 }
