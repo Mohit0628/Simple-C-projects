@@ -14,16 +14,16 @@ int main(){
         printf("%.2f\n",a-b);
         break;
     case '*':
-        printf("%.2f",a*b);
+        printf("%.2f\n",a*b);
         break;
     case '/':
-        if(a!=0 && b!=0){
-            printf("%.2f",a/b);
+        if(b!=0){
+            printf("%.2f\n",a/b);
         }
-        else{printf("Zero division error.");}    
+        else{printf("Zero division error.\n");}    
         break;        
     default:
-        printf("Enter a valid operator.");
+        printf("Enter a valid operator.\n");
         break;
     }
     return 0;
