@@ -13,14 +13,24 @@ int prop_count= sizeof(prop_isp)/sizeof(prop_isp[0]);
 
 // material and heatshield for satellite
 char *material_name[]={"Carbon phenolic","Reinforced carbon-carbon","Silica-tiles","Aluminium skin"};
-double material_mass[]={13000.0,12000.0,8500.0,3000.0};
+double material_mass[]={7000.0,2000.0,3000.0,1000.0}; //shield mass,kg -- every kg has to be lifted,so lighter is easier to launch
+double material_heat[]={14000.0,12000.0,9000.0,4000.0}; //fastest re-entry it can survive,m/s
 int material_count=sizeof(material_mass)/sizeof(material_mass[0]);
 
-void stage2(double satellite_mass);
-void stage3(double satellite_mass,double journey_isp);
-void stage4(double satellite_mass);
-void stage5(double satellite_mass, double journry_isp);
-void stage6(double satellite_mass);
+/*===mission log: each stage writes its results here===*/
+int g_stage=1;
+int g_vejicle_used=0;
+double g_dv_total=0.0;
+double g_out_hours=0.0;
+double g_hours_return=0.0;
+int g_materials_used=0;
+int g_landed=0;
+
+int stage2(double satellite_mass);
+int stage3(double satellite_mass,double journey_isp);
+int stage4(double satellite_mass);
+int stage5(double satellite_mass, double journry_isp);
+int stage6(double satellite_mass);
 void stage7(double satellite_mass,double journey_isp);
 int main(){
     printf("Welcome to MISSION: MOON\nThis is simple choice-answer game where your typed answer determine the mission.\n");
@@ -45,13 +55,14 @@ int main(){
 
     //pick material
     printf("Choose material(enter 0 when done);\n");
-    for(i=0;i<material_count;i++){printf(" %d) %-10s %.1f kg\n",i+1,material_name[i],material_mass[i]);}
+    for(i=0;i<material_count;i++){printf(" %d) %-10s %.1f kg (heat %.0f m/s)\n",i+1,material_name[i],material_mass[i],material_heat[i]);}
     do{
     printf("Material choice:");
     if(scanf("%d",&ch)!=1) break;
     if (ch>=1 && ch<= material_count)
     {
     material_total+=material_mass[ch-1];
+    g_materials_used=ch;   //the last one picked is the shield
     printf(" Added %s (%.1f kg). material total now %.1f kg\n",material_name[ch-1],material_mass[ch-1],material_total);}
     } while (ch!=0);
 
@@ -63,17 +74,26 @@ int main(){
     if(ch>=1 && ch<= prop_count){journey_isp=prop_isp[ch-1];}
 
     satellite_mass=payload_total + material_total;  //+700 for structure other unnamed instruments. 
-    
+
     printf("\n--Summary--\n");
     printf("Payload mass: %.1f kg\n",payload_total);
     printf("Material mass: %.1f kg\n",material_total);
-    printf("Satellite mass: %.1f kg",satellite_mass); //stage 1 end
-    
-    stage2(satellite_mass);
-    stage3(satellite_mass,journey_isp);
-    stage4(satellite_mass);
-    stage5(satellite_mass,journey_isp);
-    stage6(satellite_mass);
+    printf("Satellite mass: %.1f kg\n",satellite_mass); //stage 1 end
+
+    g_stage=1;   //the build is stage 1
+    if(stage2(satellite_mass)){
+        g_stage=2;
+        if(stage3(satellite_mass,journey_isp)){
+            g_stage=3;
+            if(stage4(satellite_mass)){
+                g_stage=4;
+                if(stage5(satellite_mass,journey_isp)){
+                    g_stage=5;
+                    if(stage6(satellite_mass)){g_stage=6;}
+                }
+            }
+        }
+    }
     stage7(satellite_mass,journey_isp);
     return 0;
 } 
@@ -106,12 +126,12 @@ double lv_isp[3][4]={
 //module seperation altitudes(km)
 double sep_alt[]={60.0,130.0,180.0,200.0};
 int v=0;
-void stage2 (double satellite_mass){
+int stage2 (double satellite_mass){
     int i,ch,nstages;
     double mass_above,m0,mf,dv,dv_total=0.0;
     double dv_stage[4],m0_stage[4],mf_stage[4];
 
-    printf("==STAGE 2: Rocket build & Launch==");
+    printf("==STAGE 2: Rocket build & Launch==\n");
     printf("Satellite mass from stage 1: %.1f kg\n",satellite_mass);
     printf("\n Choose launch vehucle:\n");
     for(i=0;i<lv_count;i++){printf(" %d) %s (%d stages)\n",i+1,lv_name[i],lv_stages[i]);}
@@ -119,7 +139,7 @@ void stage2 (double satellite_mass){
     scanf("%d",&ch);
     if(ch< 1 || ch> lv_count){
         printf("Invalid choice\n");
-        return;
+        return 0;
     }
     v= ch-1;
     nstages= lv_stages[v];
@@ -140,21 +160,23 @@ void stage2 (double satellite_mass){
     //printing in launch order to enjoy stage
     for(i=0;i<nstages;i++){
         printf("Stages %d: %.0f kg -> %.0f kg, +%.0f m/s [sep %.0f km]\n",i+1,m0_stage[i],mf_stage[i],dv_stage[i],sep_alt[i]);
-        printf("    >>Stage %d seperated,mass now %.0f kg\n",mf_stage[i]);
+        printf("    >>Stage %d seperated,mass now %.0f kg\n",i+1,mf_stage[i]);
     }
     printf("\nTotal delta-v available: %.0f m/s\n",dv_total);
     printf("Needed for orbit         :%.0f m/s\n",ORBIT_DV);
 
+    g_dv_total=dv_total;
     if (dv_total>= ORBIT_DV){printf("\nLIFT OFF NORMAL-- %s reaches orbit!\n",lv_name[v]);
-        printf("Sarellite detached and released into orbit.\n");}
-    else{printf("\nTOO HEAVY -- %s can't lift this satellit. Try bigger vehicle",lv_name[v]);}   
+        printf("Sarellite detached and released into orbit.\n");
+        return 1;}
+    else{printf("\nTOO HEAVY -- %s can't lift this satellit. Try bigger vehicle\n",lv_name[v]);}
+    return 0;
 } //stage2 end
 
 #define EARTH_MOON 384400000.0 //earth-moon distance in meters
 #define CRUISE_FAC 0.6 //game factor:cruise speed=0.6*exhaust velocity 
 
-void stage3(double satellite_mass,double journey_isp){
-    int i,ch;
+int stage3(double satellite_mass,double journey_isp){
     double ve,speed,time,hours,days;
 
     printf("\n=== STAGE 3: Journey to Moon==\n");
@@ -173,8 +195,10 @@ void stage3(double satellite_mass,double journey_isp){
     printf("Earth-Moon Distance: %.0f km\n",EARTH_MOON/1000.0);
     printf("Travel time        : %.1f hours (%.2f days)\n",hours,days);
 
+    g_out_hours=hours;
     if (days<=2.0){printf("A fast crossing! The crew is happy.\n");}
-    else{printf("A long,slow cruise. Bring extra snacks\n");}  
+    else{printf("A long,slow cruise. Bring extra snacks\n");}
+    return 1;
 } //stage 3 complete
 
 #define MOON_G 1.62
@@ -182,12 +206,12 @@ void stage3(double satellite_mass,double journey_isp){
 #define START_VEL 100.
 #define THRUST_A 5.0 // breaking acceleration m/s
 #define DT 0.01  //time stop
-#define FUEL_KG 300.0   //kg/s while braking
-#define BURN_RATE 2.0
+#define FUEL_KG 300.0   //total braking fuel,kg
+#define BURN_RATE 2.0   //kg/s while braking
 
-void stage4(double satellite_mass){
+int stage4(double satellite_mass){
     double ignite_alt,alt=START_ALT, v=START_VEL,fuel=FUEL_KG;
-    int burning=0;
+    int ignited=0;
 
     printf("\n===STAGE 4: MOON LANDING===\n");
     printf("Lander mass: %.1f kg\n",satellite_mass);
@@ -195,17 +219,17 @@ void stage4(double satellite_mass){
     printf("Moon gravity is %.2f m/s^2.\n",MOON_G);
     printf("Thrust force a = %.0f",satellite_mass*THRUST_A);
     printf("\nAt what altitude(m)should the braking engine fire?\n");
-    printf("Formula to calculate--> ((velocity^2)+ 2*g(moon)*H)/2*thrust force\n");
-    if(scanf("%lf",&ignite_alt)!=1) return;
+    printf("Formula to calculate--> H = (v^2 + 2*g(moon)*alt) / (2*thrust accel)\n");
+    printf("   = (%.0f^2 + 2*%.2f*%.0f)/(2*%.1f) = %.0f m\n",START_VEL,MOON_G,START_ALT,THRUST_A,
+           (START_VEL*START_VEL+2.0*MOON_G*START_ALT)/(2.0*THRUST_A));
+    if(scanf("%lf",&ignite_alt)!=1) return 0;
     
-    //stumalting decent
+    //stumalting decent, engine keeps burning all the way down
     while (alt>0.0 && fuel>0.0)
     {
         double a=MOON_G;
-        if(alt<=ignite_alt){a-=THRUST_A;
-            fuel-= BURN_RATE*DT;
-            burning=1;
-        }
+        if(!ignited && alt<=ignite_alt){ignited=1;}
+        if(ignited){a-=THRUST_A; fuel-=BURN_RATE*DT; if(fuel<0.0){fuel=0.0;}}
         v+=(a*DT);
         alt-=(v*DT);
     }
@@ -217,16 +241,16 @@ void stage4(double satellite_mass){
     printf("Descent speed : %.1f m/s\n",v);
     printf("Fuel left     : %.1f kg\n",fuel);
     
-    if(v<=3.0 && v> -1.0){printf("\nSOFT LANDING! The staellite is safely on the moon.\n");}
+    if(v<=3.0 && v> -1.0){printf("\nSOFT LANDING! The staellite is safely on the moon.\n"); g_landed=1; return 1;}
     else{printf("\nCRASH! You hit %.1f m/s. Try igniting at a different altitude\n",v);}
-    return;
+    return 0;
 }  //stage 4 complete
 
 #define MOON_GM 4.9048e12
 #define MOON_R  1737400.0
 #define ASCENT_DV 2700.0
-#define ASCENT_FUEL 900.0
-void stage5(double satellite_mass, double journry_isp){
+#define ASCENT_FUEL 7000.0
+int stage5(double satellite_mass, double journry_isp){
     double ascent_mass,fuel_needed, v_esc,speed,time,hours,days;
     printf("\n=== SATEG 5: Retrun to earth===\n");
     //1. lift off from moon
@@ -238,7 +262,7 @@ void stage5(double satellite_mass, double journry_isp){
     printf("Ascent-delta       : %.0f m/s\n",ASCENT_DV);
     printf("Ascent fuel neede  : %.0f kg (have %.0f kg)\n",fuel_needed,ASCENT_FUEL);
     if(fuel_needed>ASCENT_FUEL){printf("NOT ENOUGH FUEL!\n");
-        return;}
+        return 0;}
     printf("LIFT OFF from MOON! Heading back home\n");   
     
     //cruise back
@@ -248,46 +272,39 @@ void stage5(double satellite_mass, double journry_isp){
     days=hours/24.0;
     printf("\nReturn cruise speed : %.0f m/s\n",speed);
     printf("Return travel time    : %.1f hours (%.2f days)\n",hours,days);
+    g_hours_return=hours;
+    return 1;
 } // stage 5 complete
 
 
 #define ENTRY_SPEED 11000.0 //
-void stage6(double satlliet_mass){
-    int i,ch;
+int stage6(double satlliet_mass){
     double angle;
     printf("\n===Stage 6: EARTH RE-ENTRY ===\n");
     printf("Satellite mass : %.1f kg\n",satlliet_mass);
     printf("Entry speed : %.0f m/s\n",ENTRY_SPEED);
 
-    if(ENTRY_SPEED> *material_mass){
+    if(g_materials_used==0 || ENTRY_SPEED> material_heat[g_materials_used-1]){
         printf("\nThe shield fails -- the satelliet burns up on the re-entry.\n");
-        return;}
+        return 0;}
     printf("Shield holds. You survived the heats.\n");    
     printf("\nChoose teh entry angel in degrees(try 3-12): ");
-    if(scanf("%lf",&angle)!=1) return;
-    if(angle<4.0){printf("Too shallow--you skip off the atmosphere and lost in space\n");}
-    else if (angle>10.0){printf("Too steep-- g-force and heat crush the satelliet.\n");}
+    if(scanf("%lf",&angle)!=1) return 0;
+    if(angle<4.0){printf("Too shallow--you skip off the atmosphere and lost in space\n"); return 0;}
+    else if (angle>10.0){printf("Too steep-- g-force and heat crush the satelliet.\n"); return 0;}
     else{printf("\nSPLAHDOWN! The satelliet hits the Bay of Bengal at ~15N,87E\nCrew home safe. MISSION COMPLETE\n");}
+    return 1;
 }//Stage6 complete
-
-/*===mission log: each stage writes its results here===*/
-int g_stage=1;
-int g_vejicle_used=0;
-double g_dv_total=0.0;
-double g_out_hours=0.0;
-double g_hours_return=0.0;
-int g_materials_used=0;
 
 void stage7(double satellite_mass,double journey_isp){
     int score;
     g_vejicle_used=v+1;
     printf("\nYour payload has arrived and its online.\nHere is the record of your mission.\n");
     printf("Staellite mass : %.1f kg\nPropellent isp : %.0f s\n",satellite_mass,journey_isp);
-    if(g_vejicle_used>0){printf("Launch vehicle : %s (%.0f m/s delta-v)\n",lv_name[g_vejicle_used-1],g_dv_total);}
-    printf("Outbound journey : %.1f hours\n",g_out_hours);
-    printf("Moon landing : %s\n",(g_stage>=4)? "SOFT LANDING":"not completed");
-
-    if(g_hours_return>0){printf("Return journey : %.1f hours",g_hours_return);}
+    if(g_dv_total>0){printf("Launch vehicle : %s (%.0f m/s delta-v)\n",lv_name[g_vejicle_used-1],g_dv_total);}
+    if(g_out_hours>0){printf("Outbound journey : %.1f hours\n",g_out_hours);}
+    printf("Moon landing : %s\n",(g_landed)? "SOFT LANDING":"not completed");
+    if(g_hours_return>0){printf("Return journey : %.1f hours\n",g_hours_return);}
     if(g_materials_used>0){printf("Shield used : %s\n",material_name[g_materials_used-1]);}
     printf("Stage completed : %d of 6\n",g_stage);
 
