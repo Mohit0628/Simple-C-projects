@@ -33,7 +33,8 @@ int stage5(double satellite_mass, double journry_isp);
 int stage6(double satellite_mass);
 void stage7(double satellite_mass,double journey_isp);
 int main(){
-    printf("Welcome to MISSION: MOON\nThis is simple choice-answer game where your typed answer determine the mission.\n");
+    printf("Welcome to MISSION: MOON\nThis is simple choice-answer game where your typed answer determine the mission.\n Instructions:for game.
+When a read the sentence and answer in numbers.\nEx: choice:1 or 1 2 3.");
     int i,ch;
     double payload_total=0.0;
     double satellite_mass=0.0;
